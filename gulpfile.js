@@ -1,13 +1,13 @@
-// module consts
+// module imports using commonjs
 const { src, dest, watch, series, parallel } = require("gulp");
 const autoprefixer = require("autoprefixer");
+const browsersync = require("browser-sync").create();
 const cssnano = require("cssnano");
 const concat = require("gulp-concat");
 const postcss = require("gulp-postcss");
 const replace = require("gulp-replace");
 const sass = require("gulp-sass")(require("sass"));
-const sourcemaps = require("gulp-sourcemaps");
-const uglify = require("gulp-uglify");
+const terser = require("gulp-terser");
 
 // file path variables
 const files = {
@@ -15,25 +15,28 @@ const files = {
   jsPath: "./app/js/**/*.js",
 };
 
+/**
+ * Gulp Tasks are functions that return a node stream that can
+ * be 'piped' on
+ */
+
 // sass task
 const scssTask = () => {
-  return src(files.scssPath)
-    .pipe(sourcemaps.init())
+  return src(files.scssPath, { sourcemaps: true })
     .pipe(sass().on("error", sass.logError))
     .pipe(postcss([autoprefixer(), cssnano()]))
-    .pipe(sourcemaps.write("."))
-    .pipe(dest("dist"));
+    .pipe(dest("dist", { sourcemaps: "." }));
 };
 
 // js task
 const jsTask = () => {
-  return src(files.jsPath)
+  return src(files.jsPath, { sourcemaps: true })
     .pipe(concat("all.js"))
-    .pipe(uglify())
-    .pipe(dest("dist"));
+    .pipe(terser())
+    .pipe(dest("dist", { sourcemaps: "." }));
 };
 
-// cache busting
+// cache busting task
 const cacheBustTask = () => {
   const cbString = new Date().getTime();
 
@@ -42,10 +45,34 @@ const cacheBustTask = () => {
     .pipe(dest("."));
 };
 
-// watch task
+// browsersync tasks
+const browsersyncServe = (cb) => {
+  browsersync.init({
+    server: {
+      baseDir: "./",
+    },
+  });
+  cb();
+};
+
+const browsersyncReload = (cb) => {
+  browsersync.reload();
+  cb();
+};
+
+// file change watch task
 const watchTask = () => {
-  watch([files.scssPath, files.jsPath], parallel(scssTask, jsTask));
+  watch("*.html", browsersyncReload);
+  watch(
+    [files.scssPath, files.jsPath],
+    series(parallel(scssTask, jsTask, browsersyncReload), cacheBustTask)
+  );
 };
 
 // default task
-exports.default = series(parallel(scssTask, jsTask), cacheBustTask, watchTask);
+exports.default = series(
+  parallel(scssTask, jsTask),
+  cacheBustTask,
+  browsersyncServe,
+  watchTask
+);
