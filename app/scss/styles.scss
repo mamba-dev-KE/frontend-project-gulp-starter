@@ -1,0 +1,16 @@
+@use "partials";
+
+ul {
+  margin-left: 10rem;
+}
+
+body {
+  font-family: "Roboto", "san-serif";
+  background-color: hsl(0, 0%, 81%);
+  color: hsl(0, 0%, 0%);
+}
+
+main {
+  background-color: hsl(0, 0%, 100%);
+  color: darkblue;
+}
